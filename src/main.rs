@@ -12,6 +12,8 @@ enum Token {
     Symbol,
     #[token("{")]
     OpenBrace,
+    #[token("[")]
+    OpenBracket,
     #[token("=")]
     Equal,
     #[token(",")]
@@ -22,6 +24,8 @@ enum Token {
     OpenParen,
     #[token(")")]
     CloseParen,
+    #[token("]")]
+    CloseBracket,
     #[regex(r#""[^"]*""#)]
     StrLit,
     #[regex(r"\d+")]
@@ -38,6 +42,7 @@ enum HaskVal {
     Sym(String),
     Num(u64),
     App(Vec<HaskVal>),
+    List(Vec<HaskVal>),
     Str(String),
     Rec(HashMap<String, HaskVal>),
 }
@@ -67,6 +72,9 @@ impl<'a> Lexer<'a> {
     pub fn peek(&self) -> Option<Token> {
         self.current.clone()
     }
+    pub fn peek_str(&self) -> &'a str {
+        self.inner.slice()
+    }
     pub fn str(&self) -> &'a str {
         self.current_str
     }
@@ -76,7 +84,7 @@ fn parse<'a>(stream: &mut Lexer<'a>, depth: usize) -> Option<HaskVal> {
     let mut app = Vec::new();
     loop {
         let n = stream.peek();
-        //println!("{}{:?}: {}", &SPACES[..depth], n, stream.str());
+        //println!("{}{:?}: {}", &SPACES[..depth], n, stream.peek_str());
         app.push(match n {
             Some(Token::Symbol) => {
                 stream.next();
@@ -112,9 +120,30 @@ fn parse<'a>(stream: &mut Lexer<'a>, depth: usize) -> Option<HaskVal> {
                     }
                 }?
             }
+            Some(Token::OpenBracket) => {
+                stream.next();
+                let mut list = Vec::new();
+                loop {
+                    let nxt = stream.peek()?;
+                    //println!("{}[ {:?}: {}", &SPACES[..depth], nxt, stream.str());
+                    match nxt {
+                        Token::CloseBracket => {
+                            stream.next();
+                            break Some(HaskVal::List(list));
+                        }
+                        Token::Comma => {
+                            stream.next();
+                        }
+                        _ => {
+                            list.push(parse(stream, depth + 1)?);
+                        }
+                    }
+                }?
+            }
             Some(Token::CloseParen) => break,
             Some(Token::Comma) => break,
             Some(Token::CloseBrace) => break,
+            Some(Token::CloseBracket) => break,
             Some(Token::OpenParen) => {
                 stream.next()?;
                 let n = parse(stream, depth + 1)?;
