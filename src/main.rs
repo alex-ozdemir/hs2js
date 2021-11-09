@@ -8,7 +8,7 @@ use serde_json::to_writer;
 
 #[derive(Logos, Debug, PartialEq, Clone, Copy)]
 enum Token {
-    #[regex(r"[a-zA-Z_][a-zA-Z_0-9]*")]
+    #[regex(r"[a-zA-Z_][a-zA-Z_0-9:]*")]
     Symbol,
     #[token("{")]
     OpenBrace,
